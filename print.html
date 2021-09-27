@@ -197,74 +197,80 @@
 <h2 id="generating-a-number"><a class="header" href="#generating-a-number">Generating a number</a></h2>
 <p>By default, TypeSharp does <strong>not</strong> implement any utilities for generating random numbers, you'll need to include this from the standard library! You can achieve this in one of the following ways:</p>
 <ul>
-<li>Using the &quot;use&quot; keyword, for example: <code>use std.math</code></li>
+<li>Using the &quot;use&quot; keyword, for example: <code>use std::math</code></li>
 <li>Using the &quot;import&quot; keyword, with js-like syntax: <code>import { math } from 'std'</code></li>
 </ul>
 <p>With that said, we're going to stick to the first way, and the most standardized way of importing in TypeSharp. In your <code>src/mod.ts</code> file, add:</p>
-<pre><code class="language-typesharp">use std.math;
+<pre><code class="language-typesharp">use std::math;
+use std::io::stdin;
 </code></pre>
 <h4 id="making-a-working-prototype"><a class="header" href="#making-a-working-prototype">Making a working prototype</a></h4>
 <p>Now that we have our import, we need to add the code to save a random number for the user to guess. By default, TypeSharp is <strong>strict</strong>. Meaning, variables are only mutable to it's predefined type. With that said, let's get some things working!</p>
 <p>Before we do anything, we need to tell the compiler that we would like to use lazy numbers, because they are not enabled by default, let's do that with the following:</p>
-<pre><code class="language-typesharp"># compiler numerics-lazy
+<pre><code class="language-typesharp">#compiler numerics-lazy
 </code></pre>
-<p>Firstly we need to store the random number to the heap so we can check later if the user is guessing correctly, let's store this as a scoped constant.</p>
-<pre><code class="language-typesharp">const rand_number: int = rand(0, 100);
+<p>After that, let's make a type, this type will specify our <code>GameInt</code>! It will only be a number from 0 - 100.</p>
+<pre><code class="language-typesharp">type GameInt = (x: int) =&gt; x in 0..100;
 </code></pre>
-<p>Next, before we can start checking inputs from the user, we need to make a function to verify if the <em>guessed number</em> is close to the <em>rand_number</em>. We're going to call this function &quot;verify_number&quot;, however you can name it whatever you like.</p>
-<pre><code class="language-typesharp">fn verify_number(guess: int): bool {
-    // ...
+<p>Now let's create a game class for our game! This will run our game until the game is over!
+Here we'll declare the class, as well as our randomly generated number, which we'll save as <code>generated</code>.</p>
+<pre><code class="language-typesharp">class Game {
+    static generated: GameInt = random(0..100);
+    pub fn loop(): void {
+        // ..
+    }
 }
 </code></pre>
-<p>Now we need to implement the checking for each guess, we're going to use some simple logic operations for this. If <code>guess</code> is higher than <code>rand_number</code> we will print &quot;Guess is too high.&quot;, and if the guess is too low, we will print &quot;Guess is too low&quot;.</p>
-<pre><code class="language-typesharp">if (guess &gt; rand_number) {
-    println(&quot;Guess is too high.&quot;);
-} else if (guess &lt; rand_number) {
-    println(&quot;Guess is too low.&quot;);
-} else if (guess === rand_number) {
-    return true;
+<p>Next, before we can start checking inputs from the user, we need to make a function to loop our game! The game loop will contain all the logic for out game! While you can name it whatever you like, we're naming it <code>loop</code> for simplicity. In our loop function (inside the <code>Game</code> class) we need to add a way to check for a user input! Let's do that using <code>readln</code> from <code>stdin</code>. Because <code>readln</code> literally reads a line from stdin aka (until the user presses enter or enters a new line) we can wait for the user to guess something and then try to parse it using the <code>parse</code> implementation from stdin. However if it fails, we need to output something to the user to let them know that their input was invalid, and then proceed with the game loop.</p>
+<pre><code class="language-typesharp">// Assign the result from readln to a var named &quot;guess&quot;
+let guess = readln().parse&lt;GameInt&gt;() || {
+    // If parsing fails, print line.
+    println(&quot;Please input a number from 0 - 100!&quot;);
+    // Return (continue) the loop.
+    return this.loop();
+}
+</code></pre>
+<p>Now we need to implement the checking for each guess, we're going to use some simple logic operations for this. If <code>guess</code> is higher than <code>generated</code> we will print &quot;Guess is too high.&quot;, and if the guess is too low, we will print &quot;Guess is too low&quot;.</p>
+<pre><code class="language-typesharp">if guess == self::generated {
+    println(&quot;You won! You guessed the number!&quot;);
+    return;
+} else if (guess &gt; self::generated) {
+    println(&quot;You guessed to high...&quot;);
+} else {
+    println(&quot;You guessed to low...&quot;);
 }
 return false;
 </code></pre>
-<p>Great, we have the logic implemented, now we need to get an input from the user, and check if the input is equal to <code>rand_number</code>, if it is, end the program with a &quot;GG, the number was: <number>&quot;. However in order to keep the game running, we're going to wrap this logic in a loop, and end when the verify_number function returns &quot;true&quot;. We'll do this by using TypeSharp's standard <code>input</code> function from <code>std.io.util.input</code>, however we will import all io utilities with <code>use std.io.util</code>, so add this import to the top of your program now.</p>
-<pre><code class="language-typesharp">fn game_loop(): void {
-    const guess: int = input(&quot;Guess a number from 1 - 100: &quot;) ?? 0;
-    const end_game: bool = verify_number(guess);
-    if (end_game) {
-        println(&quot;GG, the number was: &quot; . rand_number);
-    } else {
-        game_loop();
-    }
-}
-</code></pre>
-<p>With this completed, we can simply invoke the <code>game_loop</code> function by using the <code>@main</code> decorator in TypeSharp; and after we do this our simple guessing program should now be complete! The final product should look similar to the following.</p>
-<pre><code class="language-typesharp"># compiler numerics-lazy
-use std.math;
-use std.io.util;
+<p>With this completed, we can simply invoke the <code>loop</code> function by instancing our class and calling loop! After we do this our simple guessing program should now be complete! The final product should look similar to the following.</p>
+<pre><code class="language-typesharp">use std::math::random;
+use std::io::stdin;
 
-const rand_number: int = rand(0, 100);
+type GameInt = (x: int) =&gt; x in 0..100;
 
-fn verify_number(guess: int): bool {
-    if (guess &gt; rand_number) {
-        println(&quot;Guess is too high.&quot;);
-    } else if (guess &lt; rand_number) {
-        println(&quot;Guess is too low.&quot;);
-    } else if (guess === rand_number) {
-        return true;
-    }
-    return false;
+class Game {
+     static generated: GameInt = random(0..100);
+     pub fn loop(): void {
+        let guess = readln().parse&lt;GameInt&gt;() || {
+            // If parsing fails, print line.
+            println(&quot;Please input a number from 0 - 100!&quot;);
+            // Return (continue) the loop.
+            return this.loop();
+        }
+
+        if guess == self::generated {
+            println(&quot;You won! You guessed the number!&quot;);
+            return;
+        } else if (guess &gt; self::generated) {
+            println(&quot;You guessed to high...&quot;);
+        } else {
+            println(&quot;You guessed to low...&quot;);
+        }
+
+        this.loop();
+     }
 }
 
-@main
-fn game_loop(): void {
-    const guess: int = input(&quot;Guess a number from 1 - 100: &quot;) ?? 0;
-    const end_game: bool = verify_number(guess);
-    if (end_game) {
-        println(&quot;GG, the number was: &quot; . rand_number);
-    } else {
-        game_loop();
-    }
-}
+new Game().loop();
 </code></pre>
 <h2 id="running-our-program"><a class="header" href="#running-our-program">Running our program</a></h2>
 <p>There are multiple ways to run a TypeSharp program, you could either do the first, and most recommended solution for production, aka the one you learned in the <a href="">Hello World</a> example; or you can make use of <code>ts run</code>, which will run a &quot;script&quot; or &quot;package&quot; given the command was ran properly, syntax can be seen in <strong>Block.1</strong> or can use the command <code>ts compile</code> from the previous guide.</p>
@@ -324,6 +330,19 @@ fn game_loop(): void {
 
         </div>
 
+        <!-- Livereload script (if served using the cli tool) -->
+        <script type="text/javascript">
+            var socket = new WebSocket("ws://localhost:3000/__livereload");
+            socket.onmessage = function (event) {
+                if (event.data === "reload") {
+                    socket.close();
+                    location.reload();
+                }
+            };
+            window.onbeforeunload = function() {
+                socket.close();
+            }
+        </script>
         <script type="text/javascript">
             window.playground_copyable = true;
         </script>
